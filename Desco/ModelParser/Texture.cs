@@ -68,7 +68,6 @@ namespace Desco.ModelParser
                 pixelFormatProviders[TextureHeader.Format](reader, TextureHeader, out pixelFormat, out pixelData);
 
             Image = new Bitmap(TextureHeader.Width, TextureHeader.Height, pixelFormat);
-            //Image = new Bitmap(TextureHeader.Width, TextureHeader.Unknown0x08, pixelFormat); //vita
             BitmapData bmpData = Image.LockBits(new Rectangle(0, 0, Image.Width, Image.Height), ImageLockMode.ReadWrite, Image.PixelFormat);
 
             byte[] pixelsForBmp = new byte[bmpData.Height * bmpData.Stride];
@@ -86,7 +85,6 @@ namespace Desco.ModelParser
 
             int bytesPerPixel = (Bitmap.GetPixelFormatSize(pixelFormat) / 8);
             pixelData = new byte[header.Width * header.Height * bytesPerPixel];
-            //pixelData = new byte[header.Width * header.Unknown0x08 * bytesPerPixel]; //vita
 
             for (int i = 0; i < pixelData.Length; i += bytesPerPixel)
                 for (int j = bytesPerPixel - 1; j >= 0; j--)
