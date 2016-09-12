@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.40629.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Desco", "Desco\Desco.csproj", "{33992C85-49A7-4F9E-AC14-9A520802CE22}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cobalt", "..\Cobalt\Cobalt\Cobalt.csproj", "{28763CB6-1526-4FDA-9C85-79C87D485DD1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{33992C85-49A7-4F9E-AC14-9A520802CE22}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{33992C85-49A7-4F9E-AC14-9A520802CE22}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{33992C85-49A7-4F9E-AC14-9A520802CE22}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{33992C85-49A7-4F9E-AC14-9A520802CE22}.Release|Any CPU.Build.0 = Release|Any CPU
+		{28763CB6-1526-4FDA-9C85-79C87D485DD1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{28763CB6-1526-4FDA-9C85-79C87D485DD1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{28763CB6-1526-4FDA-9C85-79C87D485DD1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{28763CB6-1526-4FDA-9C85-79C87D485DD1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
