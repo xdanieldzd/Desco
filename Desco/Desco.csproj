@@ -55,6 +55,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Conversion\DXTx.cs" />
+    <Compile Include="Conversion\NodeTransformData.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -68,6 +69,8 @@
     <Compile Include="ModelParser\Primitive.cs" />
     <Compile Include="ModelParser\Texture.cs" />
     <Compile Include="Conversion\TextureHeader.cs" />
+    <Compile Include="ModelParser\TransformData.cs" />
+    <Compile Include="ModelParser\TransformIndices.cs" />
     <Compile Include="ParsableData.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -11,6 +11,8 @@ using OpenTK.Graphics;
 using Cobalt.IO;
 using Cobalt.Mesh;
 
+using Desco.Conversion;
+
 namespace Desco.ModelParser
 {
     public class ObfBinary : ParsableData
@@ -35,6 +37,7 @@ namespace Desco.ModelParser
         public Texture[] Textures { get; private set; }
 
         Cobalt.Texture.Texture[] convTextures;
+        NodeTransformData[][] nodeTransforms;
 
         public ObfBinary(Stream stream) : base(stream) { }
 
@@ -64,6 +67,29 @@ namespace Desco.ModelParser
             convTextures = new Cobalt.Texture.Texture[Textures.Length];
             for (int i = 0; i < Textures.Length; i++)
                 convTextures[i] = new Cobalt.Texture.Texture(Textures[i].Image, OpenTK.Graphics.OpenGL.TextureWrapMode.Repeat, OpenTK.Graphics.OpenGL.TextureWrapMode.Repeat, OpenTK.Graphics.OpenGL.TextureMinFilter.Linear, OpenTK.Graphics.OpenGL.TextureMagFilter.Linear);
+
+            nodeTransforms = new NodeTransformData[Nodes.Length][];
+            for (int i = 0; i < Nodes.Length; i++)
+            {
+                nodeTransforms[i] = new NodeTransformData[Nodes[i].NumTransformIndices];
+                for (int j = 0; j < nodeTransforms[i].Length; j++)
+                {
+                    TransformIndices indices = GetTransformIndices(stream, TransformIndicesPointer, Nodes[i].TransformIndices[j]);
+
+                    NodeTransformData nodeTransform = new NodeTransformData(
+                        GetTransformData(stream, TransformDataPointer, indices.TranslationXIndex),
+                        GetTransformData(stream, TransformDataPointer, indices.TranslationYIndex),
+                        GetTransformData(stream, TransformDataPointer, indices.TranslationZIndex),
+                        GetTransformData(stream, TransformDataPointer, indices.RotationXIndex),
+                        GetTransformData(stream, TransformDataPointer, indices.RotationYIndex),
+                        GetTransformData(stream, TransformDataPointer, indices.RotationZIndex),
+                        GetTransformData(stream, TransformDataPointer, indices.ScaleXIndex),
+                        GetTransformData(stream, TransformDataPointer, indices.ScaleYIndex),
+                        GetTransformData(stream, TransformDataPointer, indices.ScaleZIndex));
+
+                    nodeTransforms[i][j] = nodeTransform;
+                }
+            }
         }
 
         private T[] GetArray<T>(Stream stream, uint pointer) where T : ParsableData, IComponent
@@ -109,6 +135,28 @@ namespace Desco.ModelParser
             return vertices;
         }
 
+        private TransformIndices GetTransformIndices(Stream stream, uint pointer, uint indicesIndex)
+        {
+            long lastPosition = stream.Position;
+            stream.Seek(pointer + (indicesIndex * 0x28), SeekOrigin.Begin);
+
+            TransformIndices indices = new TransformIndices(stream);
+
+            stream.Position = lastPosition;
+            return indices;
+        }
+
+        private TransformData GetTransformData(Stream stream, uint pointer, int dataIndex)
+        {
+            long lastPosition = stream.Position;
+            stream.Seek(pointer + (dataIndex * 0x10), SeekOrigin.Begin);
+
+            TransformData data = new TransformData(stream);
+
+            stream.Position = lastPosition;
+            return data;
+        }
+
         public Dictionary<Tuple<Node, Group, Primitive>, Mesh> GetMeshes()
         {
             Dictionary<Tuple<Node, Group, Primitive>, Mesh> meshes = new Dictionary<Tuple<Node, Group, Primitive>, Mesh>();
@@ -141,6 +189,12 @@ namespace Desco.ModelParser
             }
 
             return meshes;
+        }
+
+        public NodeTransformData GetNodeTransform(Node node, int idx)
+        {
+            int nodeIdx = Array.IndexOf(Nodes, node);
+            return nodeTransforms[nodeIdx][idx];
         }
     }
 

@@ -96,10 +96,10 @@ namespace Desco
 
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit | ClearBufferMask.StencilBufferBit);
 
-            if (renderControl.ClientRectangle.Contains(this.PointToClient(Control.MousePosition)))
-            {
-                OpenTK.Input.KeyboardState kbdState = OpenTK.Input.Keyboard.GetState();
+            OpenTK.Input.KeyboardState kbdState = OpenTK.Input.Keyboard.GetState();
 
+            if (renderControl.Focused)
+            {
                 if (kbdState[OpenTK.Input.Key.Escape] && !lastKbd[OpenTK.Input.Key.Escape])
                     Application.Exit();
 
@@ -111,11 +111,12 @@ namespace Desco
 
                 if (kbdState[OpenTK.Input.Key.F3] && !lastKbd[OpenTK.Input.Key.F3])
                     culling = !culling;
-
-                lastKbd = kbdState;
-
-                camera.Update(Core.DeltaTime);
             }
+
+            lastKbd = kbdState;
+
+            if (renderControl.ClientRectangle.Contains(this.PointToClient(Control.MousePosition)))
+                camera.Update(Core.DeltaTime);
 
             if (wireframe)
                 GL.PolygonMode(MaterialFace.FrontAndBack, PolygonMode.Line);
@@ -144,6 +145,10 @@ namespace Desco
                 {
                     Vector2 texAnim = new Vector2(mesh.Key.Item2.TextureAnimationOffsetX, mesh.Key.Item2.TextureAnimationOffsetY);
                     shader.SetUniform("texCoord_offset", texAnim);
+
+                    Vector3 nodeTrans = Vector3.Zero;
+                    shader.SetUniform("node_translation", nodeTrans);
+
                     mesh.Value.Render();
                 }
 
