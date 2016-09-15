@@ -23,5 +23,5 @@ void main(void)
     color = in_color * 2.0;
     texCoord = in_texCoord + (texCoord_offset * timer);
 
-	gl_Position = projection_matrix * modelview_matrix * vec4((in_position + node_translation), 1);
+    gl_Position = projection_matrix * modelview_matrix * vec4((in_position + node_translation), 1);
 }
