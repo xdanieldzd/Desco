@@ -164,7 +164,9 @@ namespace Desco
             if (shader != null)
             {
                 float aspectRatio = (renderControl.ClientRectangle.Width / (float)(renderControl.ClientRectangle.Height));
-                shader.SetUniformMatrix(projectionMatrixName, false, Matrix4.CreatePerspectiveFieldOfView(MathHelper.PiOver4, aspectRatio, 0.1f, 15000.0f));
+                float fovY = MathHelper.PiOver4;
+                //fovY = MathHelper.Pi / 16.0f; // game-ish
+                shader.SetUniformMatrix(projectionMatrixName, false, Matrix4.CreatePerspectiveFieldOfView(fovY, aspectRatio, 0.1f, 15000.0f));
             }
 
             if (font != null)

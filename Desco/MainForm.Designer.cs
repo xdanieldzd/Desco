@@ -37,7 +37,7 @@
             this.renderControl1.Dock = System.Windows.Forms.DockStyle.Fill;
             this.renderControl1.Location = new System.Drawing.Point(0, 0);
             this.renderControl1.Name = "renderControl1";
-            this.renderControl1.Size = new System.Drawing.Size(639, 477);
+            this.renderControl1.Size = new System.Drawing.Size(960, 544);
             this.renderControl1.TabIndex = 0;
             this.renderControl1.VSync = false;
             this.renderControl1.Render += new System.EventHandler<System.EventArgs>(this.renderControl1_Render);
@@ -48,7 +48,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(639, 477);
+            this.ClientSize = new System.Drawing.Size(960, 544);
             this.Controls.Add(this.renderControl1);
             this.Name = "MainForm";
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
