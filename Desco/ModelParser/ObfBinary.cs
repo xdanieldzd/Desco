@@ -176,22 +176,53 @@ namespace Desco.ModelParser
             }
         }
 
+        float blend = 0.0f;
+
+        // garbage test
+        OpenTK.Input.KeyboardState tmpLastKbd;
+        int tmpTransformIdx = 0;
+        // garbage test
+
         private Matrix4 GetTransformationMatrix(int baseNodeIdx, int nodeIdx)
         {
             Node node = Nodes[nodeIdx];
 
-            NodeTransformData nodeTransform = GetNodeTransform(node, 0);
+            Vector3[] scales = new Vector3[2];
+            Vector3[] rotations = new Vector3[2];
+            Vector3[] translations = new Vector3[2];
 
-            Vector3 scale = new Vector3(nodeTransform.ScaleX.Value0x00, nodeTransform.ScaleY.Value0x00, nodeTransform.ScaleZ.Value0x00);
-            Vector3 rotation = new Vector3(nodeTransform.RotationX.Value0x00, nodeTransform.RotationY.Value0x00, nodeTransform.RotationZ.Value0x00);
-            Vector3 translation = new Vector3(nodeTransform.TranslationX.Value0x00, nodeTransform.TranslationY.Value0x00, -nodeTransform.TranslationZ.Value0x00) * 10.0f;
+            for (int i = 0; i < 2; i++)
+            {
+                int transformIdx = (int)((Core.DeltaTime / 16.0f) + i);
+
+                transformIdx = tmpTransformIdx + i;
+
+                if (transformIdx >= nodeTransforms[nodeIdx].Length) transformIdx %= nodeTransforms[nodeIdx].Length;
+
+                NodeTransformData nodeTransform = nodeTransforms[nodeIdx][transformIdx];
+
+                scales[i] = new Vector3(nodeTransform.ScaleX.Value0x00, nodeTransform.ScaleY.Value0x00, nodeTransform.ScaleZ.Value0x00);
+                rotations[i] = new Vector3(nodeTransform.RotationX.Value0x00, nodeTransform.RotationY.Value0x00, nodeTransform.RotationZ.Value0x00);
+                translations[i] = new Vector3(nodeTransform.TranslationX.Value0x00, nodeTransform.TranslationY.Value0x00, -nodeTransform.TranslationZ.Value0x00) * 10.0f;
+            }
+
+            // garbage test
+            OpenTK.Input.KeyboardState tmpKbd = OpenTK.Input.Keyboard.GetState();
+            if (tmpKbd[OpenTK.Input.Key.KeypadPlus]) blend += 0.000005f;
+            if (tmpKbd[OpenTK.Input.Key.KeypadMinus]) blend -= 0.000005f;
+            if (blend < 0.0f) blend = 0.0f;
+            if (blend > 1.0f) blend = 1.0f;
+            if (tmpKbd[OpenTK.Input.Key.Keypad7] && !tmpLastKbd[OpenTK.Input.Key.Keypad7]) tmpTransformIdx--;
+            if (tmpKbd[OpenTK.Input.Key.Keypad9] && !tmpLastKbd[OpenTK.Input.Key.Keypad9]) tmpTransformIdx++;
+            tmpLastKbd = tmpKbd;
+            // garbage test
 
             Matrix4 localMatrix = Matrix4.Identity;
-            localMatrix *= Matrix4.CreateScale(scale);
-            localMatrix *= Matrix4.CreateRotationX(rotation.X);
-            localMatrix *= Matrix4.CreateRotationY(rotation.Y);
-            localMatrix *= Matrix4.CreateRotationZ(rotation.Z);
-            localMatrix *= Matrix4.CreateTranslation(translation);
+            localMatrix *= Matrix4.CreateScale(Vector3.Lerp(scales[0], scales[1], blend));
+            localMatrix *= Matrix4.CreateRotationX(Vector3.Lerp(rotations[0], rotations[1], blend).X);
+            localMatrix *= Matrix4.CreateRotationY(Vector3.Lerp(rotations[0], rotations[1], blend).Y);
+            localMatrix *= Matrix4.CreateRotationZ(Vector3.Lerp(rotations[0], rotations[1], blend).Z);
+            localMatrix *= Matrix4.CreateTranslation(Vector3.Lerp(translations[0], translations[1], blend));
 
             if (node.RelatedNodeIndex != -1)
             {
@@ -252,12 +283,6 @@ namespace Desco.ModelParser
 
             stream.Position = lastPosition;
             return data;
-        }
-
-        public NodeTransformData GetNodeTransform(Node node, int idx)
-        {
-            int nodeIdx = Array.IndexOf(Nodes, node);
-            return nodeTransforms[nodeIdx][idx];
         }
     }
 
