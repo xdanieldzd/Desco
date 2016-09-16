@@ -137,7 +137,8 @@ namespace Desco
 
             if (obfBinary != null)
             {
-                obfBinary.RenderAsset(0, shader);
+                //obfBinary.RenderAsset(0, shader);
+                obfBinary.RenderAssets(shader);
             }
 
             if (font != null)

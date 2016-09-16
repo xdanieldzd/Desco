@@ -131,6 +131,14 @@ namespace Desco.ModelParser
             return vertices;
         }
 
+        public void RenderAssets(Shader shader)
+        {
+            foreach (KeyValuePair<short, ICollection<short>> asset in Assets)
+            {
+                RenderAsset(asset.Key, shader);
+            }
+        }
+
         public void RenderAsset(short assetId, Shader shader)
         {
             GL.FrontFace(FrontFaceDirection.Cw);
@@ -144,17 +152,17 @@ namespace Desco.ModelParser
             {
                 Model model = Models[modelId];
                 foreach (uint nodeIdx in model.NodeIndices)
-                    RenderNode((int)nodeIdx, shader);
+                    RenderNode((int)model.NodeIndices[0], (int)nodeIdx, shader);
             }
 
             GL.FrontFace(FrontFaceDirection.Ccw);
         }
 
-        private void RenderNode(int nodeIdx, Shader shader)
+        private void RenderNode(int baseNodeIdx, int nodeIdx, Shader shader)
         {
             Node node = Nodes[nodeIdx];
 
-            shader.SetUniformMatrix("node_matrix", false, GetTransformationMatrix(nodeIdx));
+            shader.SetUniformMatrix("node_matrix", false, GetTransformationMatrix(baseNodeIdx, nodeIdx));
 
             if (node.GroupIndex != -1)
             {
@@ -168,9 +176,8 @@ namespace Desco.ModelParser
             }
         }
 
-        private Matrix4 GetTransformationMatrix(int nodeIdx)
+        private Matrix4 GetTransformationMatrix(int baseNodeIdx, int nodeIdx)
         {
-            if (nodeIdx > Nodes.Length) return Matrix4.Identity;
             Node node = Nodes[nodeIdx];
 
             NodeTransformData nodeTransform = GetNodeTransform(node, 0);
@@ -186,8 +193,11 @@ namespace Desco.ModelParser
             localMatrix *= Matrix4.CreateRotationZ(rotation.Z);
             localMatrix *= Matrix4.CreateTranslation(translation);
 
-            if (node.RelatedNodeIndex != -1 && node.RelatedNodeIndex != nodeIdx)
-                localMatrix *= GetTransformationMatrix(node.RelatedNodeIndex);
+            if (node.RelatedNodeIndex != -1)
+            {
+                int relativeNodeIdx = baseNodeIdx + node.RelatedNodeIndex;
+                if (relativeNodeIdx != nodeIdx) localMatrix *= GetTransformationMatrix(baseNodeIdx, relativeNodeIdx);
+            }
 
             return localMatrix;
         }
