@@ -7,7 +7,9 @@ using System.IO;
 
 using OpenTK;
 using OpenTK.Graphics;
+using OpenTK.Graphics.OpenGL;
 
+using Cobalt;
 using Cobalt.IO;
 using Cobalt.Mesh;
 
@@ -20,8 +22,8 @@ namespace Desco.ModelParser
         public uint FileSize { get; private set; }
         public uint Unknown0x04 { get; private set; }
         public uint UnknownPointer { get; private set; }
+        public uint AssetListPointer { get; private set; }
         public uint ModelListPointer { get; private set; }
-        public uint ObjectListPointer { get; private set; }
         public uint NodeListPointer { get; private set; }
         public uint TransformIndicesPointer { get; private set; }
         public uint TransformDataPointer { get; private set; }
@@ -30,6 +32,8 @@ namespace Desco.ModelParser
         public uint VertexDataPointer { get; private set; }
         public uint TextureListPointer { get; private set; }
 
+        public Dictionary<short, ICollection<short>> Assets { get; private set; }
+        public Model[] Models { get; private set; }
         public Node[] Nodes { get; private set; }
         public Group[] Groups { get; private set; }
         public Primitive[] Primitives { get; private set; }
@@ -37,6 +41,8 @@ namespace Desco.ModelParser
         public Texture[] Textures { get; private set; }
 
         Cobalt.Texture.Texture[] convTextures;
+        Dictionary<Primitive, Mesh> primitiveMeshes;
+
         NodeTransformData[][] nodeTransforms;
 
         public ObfBinary(Stream stream) : base(stream) { }
@@ -45,11 +51,12 @@ namespace Desco.ModelParser
         {
             EndianBinaryReader reader = new EndianBinaryReader(stream, Program.Endianness);
 
+            /* Read header */
             FileSize = reader.ReadUInt32();
             Unknown0x04 = reader.ReadUInt32();
             UnknownPointer = reader.ReadUInt32();
+            AssetListPointer = reader.ReadUInt32();
             ModelListPointer = reader.ReadUInt32();
-            ObjectListPointer = reader.ReadUInt32();
             NodeListPointer = reader.ReadUInt32();
             TransformIndicesPointer = reader.ReadUInt32();
             TransformDataPointer = reader.ReadUInt32();
@@ -58,16 +65,21 @@ namespace Desco.ModelParser
             VertexDataPointer = reader.ReadUInt32();
             TextureListPointer = reader.ReadUInt32();
 
-            Nodes = GetArray<Node>(stream, NodeListPointer);
-            Groups = GetArray<Group>(stream, GroupListPointer);
-            Primitives = GetArray<Primitive>(stream, PrimitiveListPointer);
+            /* Read data */
+            Assets = BinaryHelpers.GetMultiDictionary<short, short>(stream, AssetListPointer);
+            Models = BinaryHelpers.GetArray<Model>(stream, ModelListPointer);
+            Nodes = BinaryHelpers.GetArray<Node>(stream, NodeListPointer);
+            Groups = BinaryHelpers.GetArray<Group>(stream, GroupListPointer);
+            Primitives = BinaryHelpers.GetArray<Primitive>(stream, PrimitiveListPointer);
             Vertices = GetVertices(stream, VertexDataPointer, (int)Primitives.Max(x => x.VertexIndices.Max()) + 1);
-            Textures = GetArray<Texture>(stream, TextureListPointer);
+            Textures = BinaryHelpers.GetArray<Texture>(stream, TextureListPointer);
 
+            /* Generate textures */
             convTextures = new Cobalt.Texture.Texture[Textures.Length];
             for (int i = 0; i < Textures.Length; i++)
                 convTextures[i] = new Cobalt.Texture.Texture(Textures[i].Image, OpenTK.Graphics.OpenGL.TextureWrapMode.Repeat, OpenTK.Graphics.OpenGL.TextureWrapMode.Repeat, OpenTK.Graphics.OpenGL.TextureMinFilter.Linear, OpenTK.Graphics.OpenGL.TextureMagFilter.Linear);
 
+            /* Generate transforms */
             nodeTransforms = new NodeTransformData[Nodes.Length][];
             for (int i = 0; i < Nodes.Length; i++)
             {
@@ -90,24 +102,8 @@ namespace Desco.ModelParser
                     nodeTransforms[i][j] = nodeTransform;
                 }
             }
-        }
 
-        private T[] GetArray<T>(Stream stream, uint pointer) where T : ParsableData, IComponent
-        {
-            long lastPosition = stream.Position;
-            EndianBinaryReader reader = new EndianBinaryReader(stream, Program.Endianness);
-            stream.Seek(pointer, SeekOrigin.Begin);
-
-            T[] elements = new T[reader.ReadUInt32()];
-            for (int i = 0; i < elements.Length; i++)
-            {
-                stream.Seek((pointer + 0x04) + (i * 0x04), SeekOrigin.Begin);
-                stream.Seek(pointer + reader.ReadUInt32(), SeekOrigin.Begin);
-                elements[i] = (T)Activator.CreateInstance(typeof(T), new object[] { stream });
-            }
-
-            stream.Position = lastPosition;
-            return elements;
+            primitiveMeshes = new Dictionary<Primitive, Mesh>();
         }
 
         private Vertex[] GetVertices(Stream stream, uint pointer, int numVertices)
@@ -135,6 +131,97 @@ namespace Desco.ModelParser
             return vertices;
         }
 
+        public void RenderAsset(short assetId, Shader shader)
+        {
+            GL.FrontFace(FrontFaceDirection.Cw);
+
+            GL.Enable(EnableCap.Blend);
+            GL.BlendFunc(BlendingFactorSrc.SrcAlpha, BlendingFactorDest.OneMinusSrcAlpha);
+
+            // TODO: bounds checking
+
+            foreach (short modelId in Assets[assetId])
+            {
+                Model model = Models[modelId];
+                foreach (uint nodeIdx in model.NodeIndices)
+                    RenderNode((int)nodeIdx, shader);
+            }
+
+            GL.FrontFace(FrontFaceDirection.Ccw);
+        }
+
+        private void RenderNode(int nodeIdx, Shader shader)
+        {
+            Node node = Nodes[nodeIdx];
+
+            shader.SetUniformMatrix("node_matrix", false, GetTransformationMatrix(nodeIdx));
+
+            if (node.GroupIndex != -1)
+            {
+                Group group = Groups[node.GroupIndex];
+
+                Vector2 texAnim = new Vector2(group.TextureAnimationOffsetX, group.TextureAnimationOffsetY);
+                shader.SetUniform("texCoord_offset", texAnim);
+
+                IEnumerable<Mesh> meshes = GetMeshes(group);
+                foreach (Mesh mesh in meshes) mesh.Render();
+            }
+        }
+
+        private Matrix4 GetTransformationMatrix(int nodeIdx)
+        {
+            if (nodeIdx > Nodes.Length) return Matrix4.Identity;
+            Node node = Nodes[nodeIdx];
+
+            NodeTransformData nodeTransform = GetNodeTransform(node, 0);
+
+            Vector3 scale = new Vector3(nodeTransform.ScaleX.Value0x00, nodeTransform.ScaleY.Value0x00, nodeTransform.ScaleZ.Value0x00);
+            Vector3 rotation = new Vector3(nodeTransform.RotationX.Value0x00, nodeTransform.RotationY.Value0x00, nodeTransform.RotationZ.Value0x00);
+            Vector3 translation = new Vector3(nodeTransform.TranslationX.Value0x00, nodeTransform.TranslationY.Value0x00, -nodeTransform.TranslationZ.Value0x00) * 10.0f;
+
+            Matrix4 localMatrix = Matrix4.Identity;
+            localMatrix *= Matrix4.CreateScale(scale);
+            localMatrix *= Matrix4.CreateRotationX(rotation.X);
+            localMatrix *= Matrix4.CreateRotationY(rotation.Y);
+            localMatrix *= Matrix4.CreateRotationZ(rotation.Z);
+            localMatrix *= Matrix4.CreateTranslation(translation);
+
+            if (node.RelatedNodeIndex != -1 && node.RelatedNodeIndex != nodeIdx)
+                localMatrix *= GetTransformationMatrix(node.RelatedNodeIndex);
+
+            return localMatrix;
+        }
+
+        private IEnumerable<Mesh> GetMeshes(Group group)
+        {
+            List<Mesh> meshes = new List<Mesh>();
+
+            for (int p = 0; p < group.PrimitiveIndices.Length; p++)
+                if (group.PrimitiveIndices[p] >= 0 && group.PrimitiveIndices[p] < Primitives.Length)
+                    meshes.Add(GetMesh(Primitives[group.PrimitiveIndices[p]]));
+
+            return meshes;
+        }
+
+        private Mesh GetMesh(Primitive primitive)
+        {
+            if (!primitiveMeshes.ContainsKey(primitive))
+            {
+                Mesh mesh = new Mesh();
+
+                Vertex[] primVertices = new Vertex[primitive.VertexIndices.Length];
+                for (int v = 0; v < primVertices.Length; v++) primVertices[v] = Vertices[primitive.VertexIndices[v]];
+                mesh.SetVertexData<Vertex>(primVertices);
+
+                if (primitive.TextureIndex >= 0 && primitive.TextureIndex < Textures.Length)
+                    mesh.SetMaterial(new Material(convTextures[primitive.TextureIndex]));
+
+                primitiveMeshes.Add(primitive, mesh);
+            }
+
+            return primitiveMeshes[primitive];
+        }
+
         private TransformIndices GetTransformIndices(Stream stream, uint pointer, uint indicesIndex)
         {
             long lastPosition = stream.Position;
@@ -155,40 +242,6 @@ namespace Desco.ModelParser
 
             stream.Position = lastPosition;
             return data;
-        }
-
-        public Dictionary<Tuple<Node, Group, Primitive>, Mesh> GetMeshes()
-        {
-            Dictionary<Tuple<Node, Group, Primitive>, Mesh> meshes = new Dictionary<Tuple<Node, Group, Primitive>, Mesh>();
-
-            for (int n = 0; n < Nodes.Length; n++)
-            {
-                Node node = Nodes[n];
-                if (node.GroupIndex == -1) continue;
-
-                Group group = Groups[node.GroupIndex];
-
-                for (int p = 0; p < group.PrimitiveIndices.Length; p++)
-                {
-                    if (group.PrimitiveIndices[p] >= 0 && group.PrimitiveIndices[p] < Primitives.Length)
-                    {
-                        Mesh mesh = new Mesh();
-
-                        Primitive primitive = Primitives[group.PrimitiveIndices[p]];
-
-                        Vertex[] primVertices = new Vertex[primitive.VertexIndices.Length];
-                        for (int v = 0; v < primVertices.Length; v++) primVertices[v] = Vertices[primitive.VertexIndices[v]];
-                        mesh.SetVertexData<Vertex>(primVertices);
-
-                        if (primitive.TextureIndex >= 0 && primitive.TextureIndex < Textures.Length)
-                            mesh.SetMaterial(new Material(convTextures[primitive.TextureIndex]));
-
-                        meshes.Add(new Tuple<Node, Group, Primitive>(node, group, primitive), mesh);
-                    }
-                }
-            }
-
-            return meshes;
         }
 
         public NodeTransformData GetNodeTransform(Node node, int idx)

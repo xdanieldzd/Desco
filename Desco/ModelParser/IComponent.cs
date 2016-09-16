@@ -6,5 +6,5 @@ using System.Threading.Tasks;
 
 namespace Desco.ModelParser
 {
-    interface IComponent { /* Nothing right now, just a marker interface! */ }
+    public interface IComponent { /* Nothing right now, just a marker interface! */ }
 }

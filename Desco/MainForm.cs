@@ -33,7 +33,6 @@ namespace Desco
         Cobalt.Font font;
 
         ObfBinary obfBinary;
-        Dictionary<Tuple<Node, Group, Primitive>, Mesh> meshes;
 
         OpenTK.Input.KeyboardState lastKbd;
         bool wireframe, culling;
@@ -77,6 +76,9 @@ namespace Desco
 
             GL.Enable(EnableCap.DepthTest);
             GL.Enable(EnableCap.CullFace);
+
+            // "E:\[SSD User Data]\Downloads\disg-BLUS30727\map00107\map00107.obf"
+            // "E:\[SSD User Data]\Downloads\disg-BLUS30727\map30001\map30001.obf"
         }
 
         private void LoadObfFile(string file)
@@ -84,7 +86,6 @@ namespace Desco
             using (FileStream stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
             {
                 obfBinary = new ObfBinary(stream);
-                meshes = obfBinary.GetMeshes();
             }
         }
 
@@ -134,25 +135,9 @@ namespace Desco
                 shader.SetUniformMatrix(modelviewMatrixName, false, tempMatrix);
             }
 
-            if (meshes != null)
+            if (obfBinary != null)
             {
-                GL.FrontFace(FrontFaceDirection.Cw);
-
-                GL.Enable(EnableCap.Blend);
-                GL.BlendFunc(BlendingFactorSrc.SrcAlpha, BlendingFactorDest.OneMinusSrcAlpha);
-
-                foreach (var mesh in meshes)
-                {
-                    Vector2 texAnim = new Vector2(mesh.Key.Item2.TextureAnimationOffsetX, mesh.Key.Item2.TextureAnimationOffsetY);
-                    shader.SetUniform("texCoord_offset", texAnim);
-
-                    Vector3 nodeTrans = Vector3.Zero;
-                    shader.SetUniform("node_translation", nodeTrans);
-
-                    mesh.Value.Render();
-                }
-
-                GL.FrontFace(FrontFaceDirection.Ccw);
+                obfBinary.RenderAsset(0, shader);
             }
 
             if (font != null)

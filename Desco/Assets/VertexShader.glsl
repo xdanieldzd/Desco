@@ -15,7 +15,7 @@ uniform mat4 modelview_matrix;
 
 uniform float timer;
 uniform vec2 texCoord_offset;
-uniform vec3 node_translation;
+uniform mat4 node_matrix;
 
 void main(void)
 {
@@ -23,5 +23,5 @@ void main(void)
     color = in_color * 2.0;
     texCoord = in_texCoord + (texCoord_offset * timer);
 
-    gl_Position = projection_matrix * modelview_matrix * vec4((in_position + node_translation), 1);
+    gl_Position = projection_matrix * modelview_matrix * node_matrix * vec4(in_position, 1);
 }
