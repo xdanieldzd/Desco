@@ -55,6 +55,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Conversion\DXTx.cs" />
+    <Compile Include="Conversion\PacFile.cs" />
     <Compile Include="Conversion\NodeTransformData.cs" />
     <Compile Include="MainForm.cs">
       <SubType>Form</SubType>

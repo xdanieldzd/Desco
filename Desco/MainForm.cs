@@ -66,7 +66,7 @@ namespace Desco
             font = new Cobalt.Font("DejaVu Sans");
 
             string[] args = Environment.GetCommandLineArgs();
-            if (args.Length > 1) LoadObfFile(args[1]);
+            if (args.Length > 1) LoadFile(args[1]);
 
             lastKbd = OpenTK.Input.Keyboard.GetState();
             wireframe = false;
@@ -79,13 +79,50 @@ namespace Desco
 
             // "E:\[SSD User Data]\Downloads\disg-BLUS30727\map00107\map00107.obf"
             // "E:\[SSD User Data]\Downloads\disg-BLUS30727\map30001\map30001.obf"
+
+            // "E:\[SSD User Data]\Downloads\disg-BLUS30727\BLUS30727\PS3_GAME\USRDIR\Data\MAP (converted)\mp001\map00101.pac"
         }
 
-        private void LoadObfFile(string file)
+        private void LoadFile(string file)
         {
             using (FileStream stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
             {
-                obfBinary = new ObfBinary(stream);
+                string fileExtension = Path.GetExtension(file);
+
+                switch (fileExtension)
+                {
+                    case ".obf":
+                        obfBinary = new ObfBinary(stream);
+                        break;
+
+                    case ".pac":
+                        {
+                            Conversion.PacFile pac = new Conversion.PacFile(stream);
+                            Conversion.PacFileEntry pacObfEntry = pac.Files.FirstOrDefault(x => x.Filename.EndsWith(".obf"));
+                            if (pacObfEntry == null) break;
+
+                            stream.Seek(pac.DataStartPosition + pacObfEntry.Offset, SeekOrigin.Begin);
+                            using (BinaryReader reader = new BinaryReader(stream))
+                            {
+                                using (MemoryStream subStream = new MemoryStream(reader.ReadBytes((int)pacObfEntry.CalculatedLength)))
+                                {
+                                    obfBinary = new ObfBinary(subStream);
+                                }
+                            }
+                        }
+                        break;
+
+                    default:
+                        MessageBox.Show("Unsupported file specified.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        break;
+                }
+
+                if (obfBinary != null)
+                {
+                    tscmbAssets.ComboBox.DataSource = obfBinary.Assets.ToList();
+                    tscmbAssets.ComboBox.DisplayMember = "Key";
+                    tscmbAssets.ComboBox.ValueMember = "Value";
+                }
             }
         }
 
@@ -137,8 +174,15 @@ namespace Desco
 
             if (obfBinary != null)
             {
-                //obfBinary.RenderAsset(0, shader);
-                obfBinary.RenderAssets(shader);
+                if (tsbRenderAll.Checked)
+                {
+                    obfBinary.RenderAssets(shader);
+                }
+                else
+                {
+                    var selection = tscmbAssets.ComboBox.SelectedItem;
+                    obfBinary.RenderAsset(((KeyValuePair<short, ICollection<short>>)selection).Key, shader);
+                }
             }
 
             if (font != null)
