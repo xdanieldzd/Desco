@@ -20,7 +20,7 @@ uniform mat4 node_matrix;
 void main(void)
 {
     normal = (modelview_matrix * vec4(in_normal, 0)).xyz;
-    color = in_color * 2.0;
+    color = in_color;
     texCoord = in_texCoord + (texCoord_offset * timer);
 
     gl_Position = projection_matrix * modelview_matrix * node_matrix * vec4(in_position, 1);

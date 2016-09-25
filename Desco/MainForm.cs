@@ -81,6 +81,7 @@ namespace Desco
             // "E:\[SSD User Data]\Downloads\disg-BLUS30727\map30001\map30001.obf"
 
             // "E:\[SSD User Data]\Downloads\disg-BLUS30727\BLUS30727\PS3_GAME\USRDIR\Data\MAP (converted)\mp001\map00101.pac"
+            // "E:\[SSD User Data]\Downloads\disg-BLUS30727\BLUS30727\PS3_GAME\USRDIR\Data\MAP (converted)\mp300\map30001.pac"
         }
 
         private void LoadFile(string file)
@@ -174,14 +175,24 @@ namespace Desco
 
             if (obfBinary != null)
             {
-                if (tsbRenderAll.Checked)
+                GL.Enable(EnableCap.Blend);
+                GL.BlendFunc(BlendingFactorSrc.SrcAlpha, BlendingFactorDest.OneMinusSrcAlpha);
+
+                if (shader != null)
+                    shader.SetUniform("alpha_reference", 0.5f);
+
+                for (int i = 1; i >= 0; i--)
                 {
-                    obfBinary.RenderAssets(shader);
-                }
-                else
-                {
-                    var selection = tscmbAssets.ComboBox.SelectedItem;
-                    obfBinary.RenderAsset(((KeyValuePair<short, ICollection<short>>)selection).Key, shader);
+                    if (shader != null)
+                        shader.SetUniform("alpha_doLessThan", (int)i);
+
+                    if (tsbRenderAll.Checked)
+                        obfBinary.RenderAssets(shader);
+                    else
+                    {
+                        var selection = tscmbAssets.ComboBox.SelectedItem;
+                        obfBinary.RenderAsset(((KeyValuePair<short, ICollection<short>>)selection).Key, shader);
+                    }
                 }
             }
 

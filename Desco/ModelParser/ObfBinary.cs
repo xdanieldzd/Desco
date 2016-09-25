@@ -143,9 +143,6 @@ namespace Desco.ModelParser
         {
             GL.FrontFace(FrontFaceDirection.Cw);
 
-            GL.Enable(EnableCap.Blend);
-            GL.BlendFunc(BlendingFactorSrc.SrcAlpha, BlendingFactorDest.OneMinusSrcAlpha);
-
             // TODO: bounds checking
 
             foreach (short modelId in Assets[assetId])
